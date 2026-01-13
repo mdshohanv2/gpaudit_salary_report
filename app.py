@@ -40,12 +40,12 @@ def main():
             df_audit['mismatch_found_in_reaudit'] = df_audit['mismatch_found_in_reaudit'].astype(bool)
 
             # Group by auditor name (assigned_to) for audit performance
-            auditor_performance = df_audit.groupby('assigned_to').agg(
-                audit_visited=('visit_id', 'nunique'),
-                re_audit_visited=('re_audited', lambda x: (x == True).sum()),
-                mismatch_found_no_audit=('mismatch_found_in_reaudit', lambda x: (x == False).sum()),
-                mismatch_found_yes_audit=('mismatch_found_in_reaudit', lambda x: (x == True).sum())
-            ).reset_index()
+            auditor_performance = df_audit.groupby('assigned_to').apply(lambda group: pd.Series({
+                'audit_visited': group['visit_id'].nunique(),
+                're_audit_visited': group['re_audited'].sum(),
+                'mismatch_found_no_audit': group[group['re_audited'] == True]['mismatch_found_in_reaudit'].eq(False).sum(),
+                'mismatch_found_yes_audit': group[group['re_audited'] == True]['mismatch_found_in_reaudit'].eq(True).sum()
+            })).reset_index()
 
             # Calculate % of yes count/re-audited for audit data
             auditor_performance['% Mismatch in Re-Audit'] = (
@@ -95,13 +95,22 @@ def main():
             }])
             combined_df = pd.concat([combined_df, total_row], ignore_index=True)
 
-            # Format columns to remove .0
+            # Format columns
+            if '% Mismatch in Re-Audit' in combined_df.columns:
+                combined_df['% Mismatch in Re-Audit'] = combined_df['% Mismatch in Re-Audit'].apply(
+                    lambda x: f"{round(float(x))}%" if pd.notnull(x) and x != '' else ""
+                )
+
             cols_to_fix = ['Sl', 'Audit Visited', 'Re-Audit Visited (True)', 'Mismatch Found No (Audit)', 'Mismatch Found Yes (Audit)', 'Unit Price', 'Calculated Payable']
             for col in cols_to_fix:
                 if col in combined_df.columns:
                     combined_df[col] = combined_df[col].fillna(0).astype(int).astype(str)
+            
             combined_df.replace('0', '', inplace=True) # Optional: clean up zeros if preferred, or keep them
             combined_df.loc[combined_df['Auditor Name'] == 'GRAND TOTAL', 'Sl'] = ''
+            combined_df.fillna('', inplace=True)
+            # Replace 'nan' string if it was converted from actual NaN during string conversion
+            combined_df.replace('nan', '', inplace=True)
 
             st.write("### Combined Auditor Performance and Salary Analysis")
             # Display the DataFrame as HTML to avoid Streamlit's default scrolling behavior
