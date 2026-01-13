@@ -7,40 +7,42 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 ## Technology Stack
 
 - **Framework**: Streamlit (Python)
-- **Data Handling**: Pandas
+- **Data Handling**: Pandas, OpenPyXL (for Excel Formatting)
 
 ## Current Progress & Features
 
-- [X] **File Uploads**: Supports CSV/XLSX for Audit data and CSV for MFS data.
-- [X] **Sl Column**: Sequential serial numbers added as the first column.
-- [X] **75/25 Salary Logic**: Implemented complex calculation:
-    - **Fixed (75%)**: 75% of Max Payable.
-    - **Variable (25%)**: 25% of Max Payable, reduced by Mismatch %.
-    - **Actual Payable**: Sum of Fixed + Variable.
-- [X] **Interactive Table**: Switched from HTML to `st.dataframe` for cell selection, sorting, and resizing.
-- [X] **Performance Cleaning**: Mismatches are now correctly filtered only for re-audited visits.
-- [X] **Clean UI**: Round figures for payments and percentages (e.g., 54% instead of 53.6%).
+- [x] **File Uploads**: Supports CSV/XLSX for Audit data and CSV for MFS data.
+- [x] **Dynamic Column Mapping**: Users can map their file columns (Auditor, Visit ID, Re-Audit, Mismatch) manually with auto-detection for `assigned_to`, `visit_id`, etc.
+- [x] **Automated Header Extraction**: Automatically identifies the report month and visit date range from the data.
+- [x] **Live Salary Logic**: Sidebar input for **Unit Price (BDT)** with real-time updates to 75/25 calculation.
+- [x] **Interactive Table**: Styled `st.dataframe` with custom header display for web view.
+- [x] **Premium Excel Export**: 
+    - [x] High-fidelity styling matching user requirements (Blue headers, nested titles).
+    - [x] **Visual Excellence**: Highlighted "Actual Payable" column (Yellow) and full grid borders.
+    - [x] **Live Formulas**: Exported `.xlsx` contains functional formulas (`SUM`, `ROUND`, etc.) for post-download adjustments.
+    - [x] **Whole Numbers**: All salary calculations are rounded to 0 decimal places inside Excel.
+- [x] **Clean UI**: Sidebar mapping guide and auto-formatting for MFS numbers (leading zeros).
 
 ## Technical Context for Agents
-- **Main App**: `app.py` is the only active file (Streamlit).
+- **Main App**: `app.py` handles the entire pipeline (Upload -> Map -> Process -> Export).
 - **MFS Data Header**: The MFS CSV has 2 blank/title rows; must be read with `header=2`.
-- **Merging**: Join key between Audit and MFS data is `Auditor Name` (from MFS) and `assigned_to` (from Audit).
-- **Calculation Chain**: `Audited Visit` -> `Max Payable` -> `Fixed/Variable` -> `Actual Payable`.
-- **Frontend Formatting**: `st.dataframe` height is set to 600px; columns are formatted as strings to remove `.0` and maintain leading zeros in MFS numbers.
+- **Excel Logic**: Uses `openpyxl` to inject formula strings into cells rather than static values.
+- **Auto-Detection**: The `find_col` function prioritizes standard GP headers but fallbacks to keyword search.
 
 ## Rules of Thumb & Preferences
 - **Conciseness**: The user prefers direct action over long explanations.
-- **UI First**: Visual layout is prioritized (Full header names preferred over compact ones).
-- **Interactivity**: User prefers `st.dataframe` for selectability over static HTML.
-- **Rounding**: Use `round()` for display logic on the frontend.
+- **High-Fidelity Excel**: The exported file must look exactly like the reference image (colors, merging, borders).
+- **Interactivity**: Preference for `st.dataframe` on web and `ROUND` formulas in Excel.
+- **Rounding**: All payments must be round figures for payroll.
 
 ## Next Steps / Future Enhancements
 
-- Interactive sorting and filtering via `st.dataframe`.
-- Sidebar inputs for dynamic `Unit Price` adjustments.
-- Excel export functionality for payroll processing.
-- Multi-region or date-based filtering.
+- [x] Interactive sorting and filtering via `st.dataframe`.
+- [x] Sidebar inputs for dynamic `Unit Price` adjustments.
+- [x] Excel export functionality with live formulas.
+- [ ] Multi-region or date-based filtering.
+- [ ] Email automation for salary slip distribution.
 
 ---
 
-*Created on: 2026-01-13*
+*Updated on: 2026-01-13*
