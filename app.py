@@ -39,9 +39,48 @@ def main():
             else: # .xlsx
                 df_audit = pd.read_excel(audit_file)
 
-            # Ensure 're_audited' and 'mismatch_found_in_reaudit' are boolean
-            df_audit['re_audited'] = df_audit['re_audited'].astype(bool)
-            df_audit['mismatch_found_in_reaudit'] = df_audit['mismatch_found_in_reaudit'].astype(bool)
+            # Ensure we have column mapping for flexibility
+            st.sidebar.markdown("---")
+            st.sidebar.subheader("⚙️ Column Mapping")
+            
+            # Suggestion/Help Box
+            with st.sidebar.expander("📘 Definitive Mapping Guide"):
+                st.markdown("""
+                | Target Column | Description | Key Requirement |
+                | :--- | :--- | :--- |
+                | **Auditor Name** | The person who performed the primary audit. | Unique Text/Name |
+                | **Visit ID** | The specific identifier for each site visit. | Unique ID / String |
+                | **Re-Audited** | Whether a second check (re-audit) was done. | True/False or Yes/No |
+                | **Mismatch** | If the re-audit found a discrepancy. | True/False or Yes/No |
+                
+                ---
+                *Note: The app prioritizes `assigned_to`, `visit_id`, `re_audited`, and `mismatch_found_in_reaudit` automatically.*
+                """)
+
+            all_cols = df_audit.columns.tolist()
+            
+            # Auto-detect functions with specific defaults prioritized
+            def find_col(preferred, keywords, default_index=0):
+                if preferred in all_cols:
+                    return preferred
+                for col in all_cols:
+                    if any(k in col.lower() for k in keywords):
+                        return col
+                return all_cols[default_index] if all_cols else None
+
+            # Mapping Selectors with specific defaults
+            col_assigned = st.sidebar.selectbox("Auditor Name Column", all_cols, 
+                                               index=all_cols.index(find_col('assigned_to', ['assign', 'auditor'])))
+            col_visit = st.sidebar.selectbox("Visit ID Column", all_cols, 
+                                            index=all_cols.index(find_col('visit_id', ['visit', 'id'])))
+            col_reaudit = st.sidebar.selectbox("Re-Audited Column", all_cols, 
+                                              index=all_cols.index(find_col('re_audited', ['re_audit', 'reaudited'])))
+            col_mismatch = st.sidebar.selectbox("Mismatch Column", all_cols, 
+                                               index=all_cols.index(find_col('mismatch_found_in_reaudit', ['mismatch', 'found'])))
+
+            # Ensure columns are the right types
+            df_audit[col_reaudit] = df_audit[col_reaudit].astype(bool)
+            df_audit[col_mismatch] = df_audit[col_mismatch].astype(bool)
 
             # --- Extract Date Info for Header ---
             # Search for a column with 'date' in its name
@@ -68,12 +107,12 @@ def main():
                 except Exception:
                     pass
 
-            # Group by auditor name (assigned_to) for audit performance
-            auditor_performance = df_audit.groupby('assigned_to').apply(lambda group: pd.Series({
-                'audit_visited': group['visit_id'].nunique(),
-                're_audit_visited': group['re_audited'].sum(),
-                'mismatch_found_no_audit': group[group['re_audited'] == True]['mismatch_found_in_reaudit'].eq(False).sum(),
-                'mismatch_found_yes_audit': group[group['re_audited'] == True]['mismatch_found_in_reaudit'].eq(True).sum()
+            # Group by auditor name for audit performance
+            auditor_performance = df_audit.groupby(col_assigned).apply(lambda group: pd.Series({
+                'audit_visited': group[col_visit].nunique(),
+                're_audit_visited': group[col_reaudit].sum(),
+                'mismatch_found_no_audit': group[group[col_reaudit] == True][col_mismatch].eq(False).sum(),
+                'mismatch_found_yes_audit': group[group[col_reaudit] == True][col_mismatch].eq(True).sum()
             })).reset_index()
 
             # Calculate % for logic (keep as float)
@@ -93,7 +132,7 @@ def main():
 
             # Rename columns for display
             auditor_performance.rename(columns={
-                'assigned_to': 'Auditor Name',
+                col_assigned: 'Auditor Name',
                 'audit_visited': 'Audited Visit',
                 're_audit_visited': 'Re-Audited Visit',
                 'mismatch_found_no_audit': 'Mismatch No',
