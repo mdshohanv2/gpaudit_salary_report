@@ -296,9 +296,11 @@ def main():
 
                         if not is_total:
                             # Formulas for auditor rows
-                            # % Mismatch (E/D): worksheet.cell(row=row_idx, column=6).value
-                            # Note: Column indices: B=2(Audited), C=3(ReAudited), D=4(No), E=5(Yes), F=6(%), G=7(Unit), H=8(Max), I=9(Fixed), J=10(Variable), K=11(Actual)
-                            worksheet.cell(row=row_idx, column=6).value = f"=IF(D{row_idx}=0, 0, E{row_idx}/D{row_idx})"
+                            # Column mapping: B=Audited, C=Re-Audited, D=Mismatch No, E=Mismatch Yes, F=% Mismatch, G=Unit Price, H=Max, I=Fixed, J=Variable, K=Actual
+                            
+                            # % Mismatch (E/C): worksheet.cell(row=row_idx, column=6).value
+                            # Corrected denominator to column C (Re-Audited Visit)
+                            worksheet.cell(row=row_idx, column=6).value = f"=IF(C{row_idx}=0, 0, E{row_idx}/C{row_idx})"
                             worksheet.cell(row=row_idx, column=6).number_format = '0.00%'
                             
                             # Max Payable (B*G) - Rounded to 0
@@ -320,8 +322,8 @@ def main():
                                 if col_letter in ['H', 'I', 'J', 'K']:
                                     worksheet[f"{col_letter}{row_idx}"].number_format = '#,##0'
                             
-                            # Total %: =IF(D=0, 0, E/D)
-                            worksheet[f"F{row_idx}"] = f"=IF(D{row_idx}=0, 0, E{row_idx}/D{row_idx})"
+                            # Total %: =IF(C=0, 0, E/C) - Corrected denominator to C
+                            worksheet[f"F{row_idx}"] = f"=IF(C{row_idx}=0, 0, E{row_idx}/C{row_idx})"
                             worksheet[f"F{row_idx}"].number_format = '0.00%'
 
                     # Set column widths for better visibility
