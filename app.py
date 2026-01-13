@@ -200,20 +200,36 @@ def main():
                 # Excel export logic with live formulas
                 excel_buffer = io.BytesIO()
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    # Write the static data first (we'll overwrite specific cells with formulas)
-                    excel_df[final_cols].to_excel(writer, index=False, sheet_name='Salary Report')
+                    # Write the data starting from row 4 to leave space for headers
+                    excel_df[final_cols].to_excel(writer, index=False, sheet_name='Salary Report', startrow=3)
                     
                     workbook = writer.book
                     worksheet = writer.sheets['Salary Report']
                     
-                    # Number of auditor rows (excluding header and total row)
+                    # --- Add Report Headers to Excel ---
+                    from openpyxl.styles import Alignment, Font
+                    
+                    # Row 1: Title
+                    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(final_cols))
+                    cell_title = worksheet.cell(row=1, column=1, value=header_title)
+                    cell_title.font = Font(bold=True, size=14)
+                    cell_title.alignment = Alignment(horizontal='center')
+                    
+                    # Row 2: Date Range
+                    worksheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(final_cols))
+                    cell_date = worksheet.cell(row=2, column=1, value=f"[{header_date_range}]")
+                    cell_date.font = Font(size=11)
+                    cell_date.alignment = Alignment(horizontal='center')
+                    
+                    # Number of auditor rows
                     num_auditors = len(excel_df) - 1
                     
-                    # Columns indexes (A=1, B=2...)
-                    # final_cols: Sl(A), Auditor(B), Audited(C), ReAudited(D), MismatchNo(E), MismatchYes(F), 
-                    # %Mismatch(G), UnitPrice(H), MaxPayable(I), Fixed(J), Variable(K), ActualPayable(L)
+                    # Start row for formulas is now 5 because:
+                    # Row 1: Title, Row 2: Date, Row 3: Empty/Padding, Row 4: Header, Row 5: Data
+                    data_start_row = 5
                     
-                    for row_idx in range(2, num_auditors + 2):
+                    for i in range(num_auditors):
+                        row_idx = data_start_row + i
                         # % Mismatch: =IF(D=0,0,F/D)
                         worksheet.cell(row=row_idx, column=7).value = f"=IF(D{row_idx}=0, 0, F{row_idx}/D{row_idx})"
                         # Max Payable: =C*H
@@ -226,9 +242,9 @@ def main():
                         worksheet.cell(row=row_idx, column=12).value = f"=J{row_idx}+K{row_idx}"
 
                     # Grand Total Row formulas
-                    total_row_idx = num_auditors + 2
+                    total_row_idx = data_start_row + num_auditors
                     for col_letter in ['C', 'D', 'E', 'F', 'I', 'J', 'K', 'L']:
-                        worksheet[f"{col_letter}{total_row_idx}"] = f"=SUM({col_letter}2:{col_letter}{num_auditors + 1})"
+                        worksheet[f"{col_letter}{total_row_idx}"] = f"=SUM({col_letter}{data_start_row}:{col_letter}{total_row_idx - 1})"
                     
                     # Grand Total % Mismatch
                     worksheet[f"G{total_row_idx}"] = f"=IF(D{total_row_idx}=0, 0, F{total_row_idx}/D{total_row_idx})"
