@@ -71,6 +71,9 @@ def main():
             # --- Process MFS Data ---
             df_mfs = pd.read_csv(mfs_file, header=2)
             mfs_data = df_mfs[['Auditor Name', 'Full Name', 'MFS Number', 'MFS Provider']].copy()
+            
+            # Ensure MFS Number starts with 0
+            mfs_data['MFS Number'] = mfs_data['MFS Number'].apply(lambda x: f"0{int(x)}" if pd.notnull(x) and not str(x).startswith('0') else str(x))
 
             # --- Merge Data ---
             combined_df = pd.merge(
@@ -79,6 +82,26 @@ def main():
                 on='Auditor Name',
                 how='left'
             )
+
+            # Insert 'Sl' column at the beginning
+            combined_df.insert(0, 'Sl', range(1, len(combined_df) + 1))
+
+            # Add Grand Total row
+            totals = combined_df[['Audit Visited', 'Re-Audit Visited (True)', 'Mismatch Found No (Audit)', 'Mismatch Found Yes (Audit)', 'Calculated Payable']].sum()
+            total_row = pd.DataFrame([{
+                'Auditor Name': 'GRAND TOTAL',
+                **totals.to_dict(),
+                '% Mismatch in Re-Audit': (totals['Mismatch Found Yes (Audit)'] / totals['Re-Audit Visited (True)'] * 100) if totals['Re-Audit Visited (True)'] > 0 else 0
+            }])
+            combined_df = pd.concat([combined_df, total_row], ignore_index=True)
+
+            # Format columns to remove .0
+            cols_to_fix = ['Sl', 'Audit Visited', 'Re-Audit Visited (True)', 'Mismatch Found No (Audit)', 'Mismatch Found Yes (Audit)', 'Unit Price', 'Calculated Payable']
+            for col in cols_to_fix:
+                if col in combined_df.columns:
+                    combined_df[col] = combined_df[col].fillna(0).astype(int).astype(str)
+            combined_df.replace('0', '', inplace=True) # Optional: clean up zeros if preferred, or keep them
+            combined_df.loc[combined_df['Auditor Name'] == 'GRAND TOTAL', 'Sl'] = ''
 
             st.write("### Combined Auditor Performance and Salary Analysis")
             # Display the DataFrame as HTML to avoid Streamlit's default scrolling behavior
