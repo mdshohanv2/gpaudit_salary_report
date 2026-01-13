@@ -39,6 +39,31 @@ def main():
             df_audit['re_audited'] = df_audit['re_audited'].astype(bool)
             df_audit['mismatch_found_in_reaudit'] = df_audit['mismatch_found_in_reaudit'].astype(bool)
 
+            # --- Extract Date Info for Header ---
+            # Search for a column with 'date' in its name
+            date_col = next((col for col in df_audit.columns if 'date' in col.lower()), None)
+            header_title = "GP GLM Auditor's Salary"
+            header_date_range = "Visit Date: [Date Not Found]"
+            
+            if date_col:
+                # Attempt to parse dates
+                try:
+                    df_audit[date_col] = pd.to_datetime(df_audit[date_col])
+                    valid_dates = df_audit[date_col].dropna()
+                    if not valid_dates.empty:
+                        start_date = valid_dates.min()
+                        end_date = valid_dates.max()
+                        
+                        # Format: dd-Month-yyyy
+                        start_str = start_date.strftime('%d-%B-%Y')
+                        end_str = end_date.strftime('%d-%B-%Y')
+                        
+                        header_date_range = f"Visit Date: {start_str} to {end_str}"
+                        # Salary month based on end date: e.g., December'2025
+                        header_title = f"GP GLM Auditor's Salary- {end_date.strftime('%B')}'{end_date.year}"
+                except Exception:
+                    pass
+
             # Group by auditor name (assigned_to) for audit performance
             auditor_performance = df_audit.groupby('assigned_to').apply(lambda group: pd.Series({
                 'audit_visited': group['visit_id'].nunique(),
@@ -131,7 +156,15 @@ def main():
             ]
             combined_df = combined_df[final_cols]
 
-            st.write("### Combined Auditor Performance and Salary Analysis")
+            # Dynamic Header Display
+            st.markdown(f"""
+                <div style="text-align: center; border: 1px solid #e6e9ef; padding: 20px; background-color: #f8f9fb; border-radius: 10px; margin-bottom: 20px;">
+                    <h1 style="margin: 0; color: #1f365d; font-size: 2em;">{header_title}</h1>
+                    <p style="margin: 10px 0 0 0; font-size: 1.25em; color: #4a5568; font-weight: 500;">
+                        [{header_date_range}]
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
             # Using st.dataframe for interactive features like sorting, resizing, and cell selection
             st.dataframe(
                 combined_df, 
