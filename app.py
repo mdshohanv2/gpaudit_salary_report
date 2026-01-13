@@ -47,25 +47,29 @@ def main():
                 'mismatch_found_yes_audit': group[group['re_audited'] == True]['mismatch_found_in_reaudit'].eq(True).sum()
             })).reset_index()
 
-            # Calculate % of yes count/re-audited for audit data
-            auditor_performance['% Mismatch in Re-Audit'] = (
+            # Calculate % for logic (keep as float)
+            auditor_performance['mismatch_rate'] = (
                 auditor_performance['mismatch_found_yes_audit'] / auditor_performance['re_audit_visited']
-            ).fillna(0) * 100
+            ).fillna(0)
 
-            # Add Unit Price column
+            # Performance Calculations
             unit_price = 3
             auditor_performance['Unit Price'] = unit_price
+            auditor_performance['Max Payable'] = auditor_performance['audit_visited'] * unit_price
+            auditor_performance['Fixed (75%)'] = auditor_performance['Max Payable'] * 0.75
+            auditor_performance['Variable (25%)'] = (auditor_performance['Max Payable'] * 0.25) * (1 - auditor_performance['mismatch_rate'])
+            auditor_performance['Actual Payable'] = auditor_performance['Fixed (75%)'] + auditor_performance['Variable (25%)']
             
-            # Calculate Actual Payable based on audit_visited and unit price
-            auditor_performance['Calculated Payable'] = auditor_performance['audit_visited'] * auditor_performance['Unit Price']
+            # Final Percentage for display
+            auditor_performance['% Mismatch in Re-Audit'] = auditor_performance['mismatch_rate'] * 100
 
-            # Rename columns for better display
+            # Rename columns for display
             auditor_performance.rename(columns={
                 'assigned_to': 'Auditor Name',
-                'audit_visited': 'Audit Visited',
-                're_audit_visited': 'Re-Audit Visited (True)',
-                'mismatch_found_no_audit': 'Mismatch Found No (Audit)',
-                'mismatch_found_yes_audit': 'Mismatch Found Yes (Audit)'
+                'audit_visited': 'Audited Visit',
+                're_audit_visited': 'Re-Audited Visit',
+                'mismatch_found_no_audit': 'Mismatch No',
+                'mismatch_found_yes_audit': 'Mismatch Yes'
             }, inplace=True)
 
             # --- Process MFS Data ---
@@ -87,35 +91,54 @@ def main():
             combined_df.insert(0, 'Sl', range(1, len(combined_df) + 1))
 
             # Add Grand Total row
-            totals = combined_df[['Audit Visited', 'Re-Audit Visited (True)', 'Mismatch Found No (Audit)', 'Mismatch Found Yes (Audit)', 'Calculated Payable']].sum()
+            numeric_cols = ['Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
+            totals = combined_df[numeric_cols].sum()
+            
             total_row = pd.DataFrame([{
                 'Auditor Name': 'GRAND TOTAL',
                 **totals.to_dict(),
-                '% Mismatch in Re-Audit': (totals['Mismatch Found Yes (Audit)'] / totals['Re-Audit Visited (True)'] * 100) if totals['Re-Audit Visited (True)'] > 0 else 0
+                '% Mismatch in Re-Audit': (totals['Mismatch Yes'] / totals['Re-Audited Visit'] * 100) if totals['Re-Audited Visit'] > 0 else 0,
+                'Unit Price': ''
             }])
             combined_df = pd.concat([combined_df, total_row], ignore_index=True)
 
-            # Format columns
+            # Format columns for Frontend
             if '% Mismatch in Re-Audit' in combined_df.columns:
                 combined_df['% Mismatch in Re-Audit'] = combined_df['% Mismatch in Re-Audit'].apply(
                     lambda x: f"{round(float(x))}%" if pd.notnull(x) and x != '' else ""
                 )
 
-            cols_to_fix = ['Sl', 'Audit Visited', 'Re-Audit Visited (True)', 'Mismatch Found No (Audit)', 'Mismatch Found Yes (Audit)', 'Unit Price', 'Calculated Payable']
-            for col in cols_to_fix:
+            # Round numeric payment columns to whole numbers for display
+            payment_cols = ['Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
+            for col in payment_cols:
+                combined_df[col] = combined_df[col].apply(lambda x: round(float(x)) if pd.notnull(x) and x != '' else x)
+
+            cols_to_int = ['Sl', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes'] + payment_cols
+            for col in cols_to_int:
                 if col in combined_df.columns:
-                    combined_df[col] = combined_df[col].fillna(0).astype(int).astype(str)
+                    combined_df[col] = combined_df[col].fillna(0).astype(str).replace(r'\.0$', '', regex=True)
             
-            combined_df.replace('0', '', inplace=True) # Optional: clean up zeros if preferred, or keep them
+            combined_df.replace('0', '', inplace=True)
+            combined_df.replace('nan', '', inplace=True)
             combined_df.loc[combined_df['Auditor Name'] == 'GRAND TOTAL', 'Sl'] = ''
             combined_df.fillna('', inplace=True)
-            # Replace 'nan' string if it was converted from actual NaN during string conversion
-            combined_df.replace('nan', '', inplace=True)
+
+            # Reorder columns to match image
+            final_cols = [
+                'Sl', 'Auditor Name', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 
+                '% Mismatch in Re-Audit', 'Unit Price', 'Max Payable', 'Fixed (75%)', 'Variable (25%)', 
+                'Actual Payable', 'Full Name', 'MFS Number', 'MFS Provider'
+            ]
+            combined_df = combined_df[final_cols]
 
             st.write("### Combined Auditor Performance and Salary Analysis")
-            # Display the DataFrame as HTML to avoid Streamlit's default scrolling behavior
-            st.markdown(combined_df.to_html(index=False), unsafe_allow_html=True)
-            st.info("Note: Displaying the full table as HTML removes interactive features like sorting and column resizing.")
+            # Using st.dataframe for interactive features like sorting, resizing, and cell selection
+            st.dataframe(
+                combined_df, 
+                use_container_width=True, 
+                hide_index=True,
+                height=600
+            )
 
             # Add download button for the combined DataFrame
             csv = combined_df.to_csv(index=False).encode('utf-8')
