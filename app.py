@@ -24,7 +24,10 @@ def main():
         </style>
         """, unsafe_allow_html=True)
 
-    st.sidebar.header("Upload Files")
+    st.sidebar.header("Settings & Uploads")
+    unit_price = st.sidebar.number_input("Unit Price (BDT)", min_value=0, value=3, step=1)
+    
+    st.sidebar.markdown("---")
     audit_file = st.sidebar.file_uploader("Upload Audit Data (CSV or XLSX)", type=["csv", "xlsx"])
     mfs_file = st.sidebar.file_uploader("Upload MFS Data (CSV)", type=["csv"])
 
@@ -79,7 +82,6 @@ def main():
             ).fillna(0)
 
             # Performance Calculations
-            unit_price = 3
             auditor_performance['Unit Price'] = unit_price
             auditor_performance['Max Payable'] = auditor_performance['audit_visited'] * unit_price
             auditor_performance['Fixed (75%)'] = auditor_performance['Max Payable'] * 0.75
@@ -126,7 +128,14 @@ def main():
                 '% Mismatch in Re-Audit': (totals['Mismatch Yes'] / totals['Re-Audited Visit'] * 100) if totals['Re-Audited Visit'] > 0 else 0,
                 'Unit Price': ''
             }])
-            combined_df = pd.concat([combined_df, total_row], ignore_index=True)
+            df_total_row = pd.concat([combined_df, total_row], ignore_index=True)
+
+            # --- Prepare Data for Excel Formulas ---
+            # We keep a copy of the dataframe before string formatting
+            excel_df = df_total_row.copy()
+            
+            # Format columns for Frontend display (using original name combined_df for display logic)
+            combined_df = df_total_row.copy()
 
             # Format columns for Frontend
             if '% Mismatch in Re-Audit' in combined_df.columns:
@@ -188,15 +197,46 @@ def main():
                 )
             
             with col2:
-                # Excel export logic
+                # Excel export logic with live formulas
                 excel_buffer = io.BytesIO()
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    combined_df.to_excel(writer, index=False, sheet_name='Salary Report')
+                    # Write the static data first (we'll overwrite specific cells with formulas)
+                    excel_df[final_cols].to_excel(writer, index=False, sheet_name='Salary Report')
+                    
+                    workbook = writer.book
+                    worksheet = writer.sheets['Salary Report']
+                    
+                    # Number of auditor rows (excluding header and total row)
+                    num_auditors = len(excel_df) - 1
+                    
+                    # Columns indexes (A=1, B=2...)
+                    # final_cols: Sl(A), Auditor(B), Audited(C), ReAudited(D), MismatchNo(E), MismatchYes(F), 
+                    # %Mismatch(G), UnitPrice(H), MaxPayable(I), Fixed(J), Variable(K), ActualPayable(L)
+                    
+                    for row_idx in range(2, num_auditors + 2):
+                        # % Mismatch: =IF(D=0,0,F/D)
+                        worksheet.cell(row=row_idx, column=7).value = f"=IF(D{row_idx}=0, 0, F{row_idx}/D{row_idx})"
+                        # Max Payable: =C*H
+                        worksheet.cell(row=row_idx, column=9).value = f"=C{row_idx}*H{row_idx}"
+                        # Fixed: =I*0.75
+                        worksheet.cell(row=row_idx, column=10).value = f"=I{row_idx}*0.75"
+                        # Variable: =(I*0.25)*(1-G)
+                        worksheet.cell(row=row_idx, column=11).value = f"=(I{row_idx}*0.25)*(1-G{row_idx})"
+                        # Actual: =J+K
+                        worksheet.cell(row=row_idx, column=12).value = f"=J{row_idx}+K{row_idx}"
+
+                    # Grand Total Row formulas
+                    total_row_idx = num_auditors + 2
+                    for col_letter in ['C', 'D', 'E', 'F', 'I', 'J', 'K', 'L']:
+                        worksheet[f"{col_letter}{total_row_idx}"] = f"=SUM({col_letter}2:{col_letter}{num_auditors + 1})"
+                    
+                    # Grand Total % Mismatch
+                    worksheet[f"G{total_row_idx}"] = f"=IF(D{total_row_idx}=0, 0, F{total_row_idx}/D{total_row_idx})"
                 
                 st.download_button(
-                    label="Download as Excel (XLSX)",
+                    label="Download as Excel with Formulas",
                     data=excel_buffer.getvalue(),
-                    file_name="combined_auditor_performance.xlsx",
+                    file_name=f"Salary_Report_{header_title.split('- ')[-1]}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
