@@ -85,6 +85,15 @@ def main():
             st.markdown(combined_df.to_html(index=False), unsafe_allow_html=True)
             st.info("Note: Displaying the full table as HTML removes interactive features like sorting and column resizing.")
 
+            # Add download button for the combined DataFrame
+            csv = combined_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="Download Combined Data as CSV",
+                data=csv,
+                file_name="combined_auditor_performance.csv",
+                mime="text/csv",
+            )
+
         except Exception as e:
             st.error(f"An error occurred during file processing: {e}")
     else:
