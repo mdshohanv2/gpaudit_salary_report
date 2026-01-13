@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import io
 
 def main():
     st.set_page_config(layout="wide") # Set page layout to wide for better use of space
@@ -173,14 +174,32 @@ def main():
                 height=600
             )
 
-            # Add download button for the combined DataFrame
-            csv = combined_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="Download Combined Data as CSV",
-                data=csv,
-                file_name="combined_auditor_performance.csv",
-                mime="text/csv",
-            )
+            # Add download buttons in columns
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                csv = combined_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download as CSV",
+                    data=csv,
+                    file_name="combined_auditor_performance.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            
+            with col2:
+                # Excel export logic
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    combined_df.to_excel(writer, index=False, sheet_name='Salary Report')
+                
+                st.download_button(
+                    label="Download as Excel (XLSX)",
+                    data=excel_buffer.getvalue(),
+                    file_name="combined_auditor_performance.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
         except Exception as e:
             st.error(f"An error occurred during file processing: {e}")
