@@ -8,10 +8,12 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 
 - **Framework**: Streamlit (Python)
 - **Data Handling**: Pandas, OpenPyXL (for Excel Formatting)
+- **Database**: Google Sheets (Cloud-based MFS database)
 
 ## Current Progress & Features
 
-- [x] **File Uploads**: Supports CSV/XLSX for Audit data and CSV for MFS data.
+- [x] **File Uploads**: Supports CSV/XLSX for Audit data.
+- [x] **Cloud MFS Database**: Automatically syncs with a centralized Google Sheet for auditor payment details. Manual override option included.
 - [x] **Dynamic Column Mapping**: Users can map their file columns (Auditor, Visit ID, Re-Audit, Mismatch) manually with auto-detection for `assigned_to`, `visit_id`, etc.
 - [x] **Automated Header Extraction**: Automatically identifies the report month and visit date range from the data.
 - [x] **Live Salary Logic**: Sidebar input for **Unit Price (BDT)** with real-time updates to 75/25 calculation.
@@ -22,10 +24,11 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
     - [x] **Live Formulas**: Exported `.xlsx` contains functional formulas (`SUM`, `ROUND`, etc.) for post-download adjustments.
     - [x] **Whole Numbers**: All salary calculations are rounded to 0 decimal places inside Excel.
 - [x] **Clean UI**: Sidebar mapping guide and auto-formatting for MFS numbers (leading zeros).
+- [x] **Deployment Ready**: `requirements.txt` created and cloud-database integrated.
 
 ## Technical Context for Agents
 - **Main App**: `app.py` handles the entire pipeline (Upload -> Map -> Process -> Export).
-- **MFS Data Header**: The MFS CSV has 2 blank/title rows; must be read with `header=2`.
+- **MFS Data Source**: Defaults to Google Sheets via CSV export link. Fallback to manual upload if network fails.
 - **Excel Logic**: Uses `openpyxl` to inject formula strings into cells rather than static values.
 - **Auto-Detection**: The `find_col` function prioritizes standard GP headers but fallbacks to keyword search.
 
@@ -40,9 +43,10 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 - [x] Interactive sorting and filtering via `st.dataframe`.
 - [x] Sidebar inputs for dynamic `Unit Price` adjustments.
 - [x] Excel export functionality with live formulas.
+- [x] Google Sheets Integration for MFS Database.
 - [ ] Multi-region or date-based filtering.
 - [ ] Email automation for salary slip distribution.
 
 ---
 
-*Updated on: 2026-01-13*
+*Updated on: 2026-01-14*

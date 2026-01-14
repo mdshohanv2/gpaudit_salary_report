@@ -28,10 +28,24 @@ def main():
     unit_price = st.sidebar.number_input("Unit Price (BDT)", min_value=0, value=3, step=1)
     
     st.sidebar.markdown("---")
+    st.sidebar.markdown("---")
     audit_file = st.sidebar.file_uploader("Upload Audit Data (CSV or XLSX)", type=["csv", "xlsx"])
-    mfs_file = st.sidebar.file_uploader("Upload MFS Data (CSV)", type=["csv"])
+    
+    # Google Sheets MFS Integration
+    SHEET_ID = "1v8w8O-s3wKVfBXeEDU9Sd7F-nmSlQRV39mDs1iZxsSc"
+    SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+    
+    mfs_file = st.sidebar.file_uploader("Override MFS Data (Optional CSV)", type=["csv"])
+    
+    # Logic to decide which MFS data to use
+    if mfs_file is not None:
+        mfs_source = mfs_file
+        st.sidebar.success("✅ Using Uploaded MFS Override")
+    else:
+        mfs_source = SHEET_URL
+        st.sidebar.info("🌐 Connected to Google Sheets MFS Database")
 
-    if audit_file is not None and mfs_file is not None:
+    if audit_file is not None: # MFS is now optional/auto-loaded
         try:
             # --- Process Audit Data ---
             if audit_file.name.endswith('.csv'):
@@ -140,7 +154,12 @@ def main():
             }, inplace=True)
 
             # --- Process MFS Data ---
-            df_mfs = pd.read_csv(mfs_file, header=2)
+            try:
+                df_mfs = pd.read_csv(mfs_source, header=2)
+            except Exception:
+                # Fallback in case of network issues or format changes
+                st.error("⚠️ Failed to load MFS Data from Google Sheets. Please upload the file manually.")
+                st.stop()
             mfs_data = df_mfs[['Auditor Name', 'Full Name', 'MFS Number', 'MFS Provider']].copy()
             
             # Ensure MFS Number starts with 0
@@ -381,7 +400,7 @@ def main():
         except Exception as e:
             st.error(f"An error occurred during file processing: {e}")
     else:
-        st.info("Please upload both audit data and MFS data files to see the analysis.")
+        st.info("Please upload Audit Data to see the analysis. MFS data is auto-loaded from the central database.")
 
 if __name__ == "__main__":
     main()

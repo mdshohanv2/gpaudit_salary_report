@@ -2,11 +2,13 @@
 
 ## High Priority: Deployment Readiness
 
-### [ ] Google Sheets Integration for MFS Database (Option 2)
+### [x] Google Sheets Integration for MFS Database (Option 2)
 **Brief**: Transition the auditor MFS details from a static CSV dependency to a live Google Sheet.
-- **Why**: Allows instant updates to auditor phone numbers or providers without needing to re-deploy the application.
-- **Goal**: Implement a "Simple Link" or "API" based sync so the app always has the latest payment details.
-- **Current Status**: Tasked for next development phase.
+- **Status**: Completed. App now automatically fetches data from the cloud.
+
+### [ ] Production Deployment
+**Brief**: Deploy the application to Streamlit Community Cloud.
+- **Status**: Ready for execution.
 
 ## Medium Priority: Feature Polish
 
@@ -19,4 +21,4 @@
 - **Status**: Backlog.
 
 ---
-*Created: 2026-01-13*
+*Updated: 2026-01-14*
