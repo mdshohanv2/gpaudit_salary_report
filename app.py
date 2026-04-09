@@ -49,9 +49,9 @@ def main():
         try:
             # --- Process Audit Data ---
             if audit_file.name.endswith('.csv'):
-                df_audit = pd.read_csv(audit_file)
+                df_audit = pd.read_csv(audit_file, na_values=['', ' '])
             else: # .xlsx
-                df_audit = pd.read_excel(audit_file)
+                df_audit = pd.read_excel(audit_file, na_values=['', ' '])
 
             # Ensure we have column mapping for flexibility
             st.sidebar.markdown("---")
@@ -155,7 +155,7 @@ def main():
 
             # --- Process MFS Data ---
             try:
-                df_mfs = pd.read_csv(mfs_source, header=2)
+                df_mfs = pd.read_csv(mfs_source, header=2, na_values=['', ' '])
             except Exception:
                 # Fallback in case of network issues or format changes
                 st.error("⚠️ Failed to load MFS Data from Google Sheets. Please upload the file manually.")
