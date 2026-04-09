@@ -121,13 +121,13 @@ def main():
                 except Exception:
                     pass
 
-            # Group by auditor name for audit performance
+            # Group by auditor name for audit performance (added include_groups=False for deprecation warning)
             auditor_performance = df_audit.groupby(col_assigned).apply(lambda group: pd.Series({
                 'audit_visited': group[col_visit].nunique(),
                 're_audit_visited': group[col_reaudit].sum(),
                 'mismatch_found_no_audit': group[group[col_reaudit] == True][col_mismatch].eq(False).sum(),
                 'mismatch_found_yes_audit': group[group[col_reaudit] == True][col_mismatch].eq(True).sum()
-            })).reset_index()
+            }), include_groups=False).reset_index()
 
             # Calculate % for logic (keep as float)
             auditor_performance['mismatch_rate'] = (
@@ -195,26 +195,30 @@ def main():
             # Format columns for Frontend display (using original name combined_df for display logic)
             combined_df = df_total_row.copy()
 
-            # Format columns for Frontend
+            # Format columns for Frontend (Handling warnings and Arrow serialization)
+            # 1. Cast specifically problematic columns to object before filling with empty strings
+            cols_to_format = ['Sl', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Unit Price'] + payment_cols
+            for col in cols_to_format:
+                if col in combined_df.columns:
+                    combined_df[col] = combined_df[col].astype(object)
+
             if '% Mismatch in Re-Audit' in combined_df.columns:
                 combined_df['% Mismatch in Re-Audit'] = combined_df['% Mismatch in Re-Audit'].apply(
                     lambda x: f"{round(float(x))}%" if pd.notnull(x) and x != '' else ""
                 )
 
-            # Round numeric payment columns to whole numbers for display
-            payment_cols = ['Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
+            # Round numeric payment columns to whole numbers
             for col in payment_cols:
-                combined_df[col] = combined_df[col].apply(lambda x: round(float(x)) if pd.notnull(x) and x != '' else x)
+                combined_df[col] = combined_df[col].apply(lambda x: round(float(x)) if pd.notnull(x) and x != '' and x is not None else x)
 
-            cols_to_int = ['Sl', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes'] + payment_cols
-            for col in cols_to_int:
+            # Final string cleaning for the UI
+            for col in cols_to_format:
                 if col in combined_df.columns:
                     combined_df[col] = combined_df[col].fillna(0).astype(str).replace(r'\.0$', '', regex=True)
-            
-            combined_df.replace('0', '', inplace=True)
-            combined_df.replace('nan', '', inplace=True)
+                    combined_df[col] = combined_df[col].replace(['0', '0.0', 'nan', 'None'], '')
+
             combined_df.loc[combined_df['Auditor Name'] == 'GRAND TOTAL', 'Sl'] = ''
-            combined_df.fillna('', inplace=True)
+            combined_df = combined_df.fillna('')
 
             # Reorder columns to match image
             final_cols = [
@@ -233,10 +237,10 @@ def main():
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
-            # Using st.dataframe for interactive features like sorting, resizing, and cell selection
+            # Using st.dataframe with width='stretch' to resolve deprecation warnings
             st.dataframe(
                 combined_df, 
-                use_container_width=True, 
+                width="stretch", 
                 hide_index=True,
                 height=600
             )
