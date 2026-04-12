@@ -197,6 +197,7 @@ def main():
 
             # Format columns for Frontend (Handling warnings and Arrow serialization)
             # 1. Cast specifically problematic columns to object before filling with empty strings
+            payment_cols = ['Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
             cols_to_format = ['Sl', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Unit Price'] + payment_cols
             for col in cols_to_format:
                 if col in combined_df.columns:
