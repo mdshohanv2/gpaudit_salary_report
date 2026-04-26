@@ -5,6 +5,24 @@ import io
 # Opt-in to pandas future behavior to silence downcasting warnings
 pd.set_option('future.no_silent_downcasting', True)
 
+@st.cache_data(ttl=3600)
+def fetch_mfs_from_url(url):
+    """Caches the MFS database from Google Sheets."""
+    df_mfs = pd.read_csv(url, header=2, na_values=['', ' '])
+    mfs_data = df_mfs[['Auditor Name', 'Full Name', 'MFS Number', 'MFS Provider']].copy()
+    mfs_data['MFS Number'] = mfs_data['MFS Number'].apply(
+        lambda x: f"0{int(x)}" if pd.notnull(x) and not str(x).startswith('0') else str(x)
+    )
+    return mfs_data
+
+@st.cache_data
+def parse_audit_file(file_content, file_name):
+    """Caches the parsing of the uploaded audit file."""
+    if file_name.endswith('.csv'):
+        return pd.read_csv(io.BytesIO(file_content), na_values=['', ' '])
+    else:
+        return pd.read_excel(io.BytesIO(file_content), na_values=['', ' '])
+
 def main():
     st.set_page_config(layout="wide") # Set page layout to wide for better use of space
     st.title("Auditor Performance and Salary Analysis")
@@ -56,11 +74,8 @@ def main():
 
     if audit_file is not None: # MFS is now optional/auto-loaded
         try:
-            # --- Process Audit Data ---
-            if audit_file.name.endswith('.csv'):
-                df_audit = pd.read_csv(audit_file, na_values=['', ' '])
-            else: # .xlsx
-                df_audit = pd.read_excel(audit_file, na_values=['', ' '])
+            # --- Process Audit Data (Cached) ---
+            df_audit = parse_audit_file(audit_file.getvalue(), audit_file.name).copy()
 
             # Ensure we have column mapping for flexibility
             st.sidebar.markdown("---")
@@ -198,16 +213,18 @@ def main():
             }, inplace=True)
 
             # --- Process MFS Data ---
-            try:
-                df_mfs = pd.read_csv(mfs_source, header=2, na_values=['', ' '])
-            except Exception:
-                # Fallback in case of network issues or format changes
-                st.error("⚠️ Failed to load MFS Data from Google Sheets. Please upload the file manually.")
-                st.stop()
-            mfs_data = df_mfs[['Auditor Name', 'Full Name', 'MFS Number', 'MFS Provider']].copy()
-            
-            # Ensure MFS Number starts with 0
-            mfs_data['MFS Number'] = mfs_data['MFS Number'].apply(lambda x: f"0{int(x)}" if pd.notnull(x) and not str(x).startswith('0') else str(x))
+            if mfs_file is not None:
+                # Manual upload (no caching needed for local file)
+                df_mfs_raw = pd.read_csv(mfs_file, header=2, na_values=['', ' '])
+                mfs_data = df_mfs_raw[['Auditor Name', 'Full Name', 'MFS Number', 'MFS Provider']].copy()
+                mfs_data['MFS Number'] = mfs_data['MFS Number'].apply(lambda x: f"0{int(x)}" if pd.notnull(x) and not str(x).startswith('0') else str(x))
+            else:
+                # Google Sheets (Cached)
+                try:
+                    mfs_data = fetch_mfs_from_url(SHEET_URL)
+                except Exception:
+                    st.error("⚠️ Failed to load MFS Data from Google Sheets. Please upload the file manually.")
+                    st.stop()
 
             # --- Merge Data ---
             combined_df = pd.merge(
