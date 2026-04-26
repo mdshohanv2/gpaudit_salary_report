@@ -25,7 +25,13 @@ def main():
         """, unsafe_allow_html=True)
 
     st.sidebar.header("Settings & Uploads")
-    unit_price = st.sidebar.number_input("Unit Price (BDT)", min_value=0, value=3, step=1)
+    unit_price = st.sidebar.number_input("Unit Price (BDT)", min_value=0.0, value=3.0, step=0.5)
+    
+    # Configuration for Payment Split
+    fixed_pct = st.sidebar.number_input("Fixed Payment %", min_value=0, max_value=100, value=75, step=1)
+    var_pct = 100 - fixed_pct
+    fixed_decimal = fixed_pct / 100.0
+    var_decimal = var_pct / 100.0
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("---")
@@ -168,9 +174,13 @@ def main():
             # Performance Calculations
             auditor_performance['Unit Price'] = unit_price
             auditor_performance['Max Payable'] = auditor_performance['audit_visited'] * unit_price
-            auditor_performance['Fixed (75%)'] = auditor_performance['Max Payable'] * 0.75
-            auditor_performance['Variable (25%)'] = (auditor_performance['Max Payable'] * 0.25) * (1 - auditor_performance['mismatch_rate'])
-            auditor_performance['Actual Payable'] = auditor_performance['Fixed (75%)'] + auditor_performance['Variable (25%)']
+            
+            fixed_col = f'Fixed ({fixed_pct}%)'
+            var_col = f'Variable ({var_pct}%)'
+            
+            auditor_performance[fixed_col] = auditor_performance['Max Payable'] * fixed_decimal
+            auditor_performance[var_col] = (auditor_performance['Max Payable'] * var_decimal) * (1 - auditor_performance['mismatch_rate'])
+            auditor_performance['Actual Payable'] = auditor_performance[fixed_col] + auditor_performance[var_col]
             
             # Final Percentage for display
             auditor_performance['% Mismatch in Re-Audit'] = auditor_performance['mismatch_rate'] * 100
@@ -208,7 +218,7 @@ def main():
             combined_df.insert(0, 'Sl', range(1, len(combined_df) + 1))
 
             # Add Grand Total row
-            numeric_cols = ['Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
+            numeric_cols = ['Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Max Payable', fixed_col, var_col, 'Actual Payable']
             totals = combined_df[numeric_cols].sum()
             
             total_row = pd.DataFrame([{
@@ -228,7 +238,7 @@ def main():
 
             # Format columns for Frontend (Handling warnings and Arrow serialization)
             # 1. Cast specifically problematic columns to object before filling with empty strings
-            payment_cols = ['Max Payable', 'Fixed (75%)', 'Variable (25%)', 'Actual Payable']
+            payment_cols = ['Max Payable', fixed_col, var_col, 'Actual Payable']
             cols_to_format = ['Sl', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 'Unit Price'] + payment_cols
             for col in cols_to_format:
                 if col in combined_df.columns:
@@ -255,7 +265,7 @@ def main():
             # Reorder columns to match image
             final_cols = [
                 'Sl', 'Auditor Name', 'Audited Visit', 'Re-Audited Visit', 'Mismatch No', 'Mismatch Yes', 
-                '% Mismatch in Re-Audit', 'Unit Price', 'Max Payable', 'Fixed (75%)', 'Variable (25%)', 
+                '% Mismatch in Re-Audit', 'Unit Price', 'Max Payable', fixed_col, var_col, 
                 'Actual Payable', 'Full Name', 'MFS Number', 'MFS Provider'
             ]
             combined_df = combined_df[final_cols]
@@ -297,7 +307,7 @@ def main():
                 export_cols = [
                     'Auditor Name', 'Audited Visit', 'Re-Audited Visit', 
                     'Mismatch No', 'Mismatch Yes', '% Mismatch in Re-Audit', 
-                    'Unit Price', 'Max Payable', 'Fixed (75%)', 'Variable (25%)', 
+                    'Unit Price', 'Max Payable', fixed_col, var_col, 
                     'Actual Payable', 'Full Name', 'MFS Number', 'MFS Provider'
                 ]
                 
@@ -349,9 +359,9 @@ def main():
                         (3, 7, 4, 7, "Unit Price"),
                         (3, 8, 4, 8, "Max Payable"),
                         (3, 9, 3, 9, "Fixed"),
-                        (4, 9, 4, 9, "75%"),
+                        (4, 9, 4, 9, f"{fixed_pct}%"),
                         (3, 10, 3, 10, "Variable"),
-                        (4, 10, 4, 10, "25%"),
+                        (4, 10, 4, 10, f"{var_pct}%"),
                         (3, 11, 4, 11, "Actual\nPayable"),
                         (3, 12, 4, 12, "Full Name"),
                         (3, 13, 4, 13, "MFS Number"),
@@ -399,10 +409,10 @@ def main():
                             
                             # Max Payable (B*G) - Rounded to 0
                             worksheet.cell(row=row_idx, column=8).value = f"=ROUND(B{row_idx}*G{row_idx}, 0)"
-                            # Fixed (H*0.75) - Rounded to 0
-                            worksheet.cell(row=row_idx, column=9).value = f"=ROUND(H{row_idx}*0.75, 0)"
-                            # Variable ((H*0.25)*(1-F)) - Rounded to 0
-                            worksheet.cell(row=row_idx, column=10).value = f"=ROUND((H{row_idx}*0.25)*(1-F{row_idx}), 0)"
+                            # Fixed (H*fixed_decimal) - Rounded to 0
+                            worksheet.cell(row=row_idx, column=9).value = f"=ROUND(H{row_idx}*{fixed_decimal}, 0)"
+                            # Variable ((H*var_decimal)*(1-F)) - Rounded to 0
+                            worksheet.cell(row=row_idx, column=10).value = f"=ROUND((H{row_idx}*{var_decimal})*(1-F{row_idx}), 0)"
                             # Actual (I+J)
                             worksheet.cell(row=row_idx, column=11).value = f"=I{row_idx}+J{row_idx}"
                             
