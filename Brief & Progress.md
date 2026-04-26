@@ -16,16 +16,10 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 - [x] **Cloud MFS Database**: Automatically syncs with a centralized Google Sheet for auditor payment details. Manual override option included.
 - [x] **Dynamic Column Mapping**: Users can map their file columns (Auditor, Visit ID, Re-Audit, Mismatch) manually with auto-detection for `assigned_to`, `visit_id`, etc.
 - [x] **Automated Header Extraction**: Automatically identifies the report month and visit date range from the data.
-- [x] **Live Salary Logic**: Sidebar input for **Unit Price (BDT)** with real-time updates to 75/25 calculation.
-- [x] **Interactive Table**: Styled `st.dataframe` with custom header display for web view.
-- [x] **Premium Excel Export**: 
-    - [x] High-fidelity styling matching user requirements (Blue headers, nested titles).
-    - [x] **Visual Excellence**: Highlighted "Actual Payable" column (Yellow) and full grid borders.
-    - [x] **Live Formulas**: Exported `.xlsx` contains functional formulas (`SUM`, `ROUND`, etc.) for post-download adjustments.
-    - [x] **Whole Numbers**: All salary calculations are rounded to 0 decimal places inside Excel.
-- [x] **Clean UI**: Sidebar mapping guide and auto-formatting for MFS numbers (leading zeros).
-- [x] **Deployment Ready**: `requirements.txt` created and cloud-database integrated.
-- [x] **Maintenance & Bug Fixes**: Resolved Pandas/Streamlit deprecation warnings (`include_groups=False`, `hide_index=True`) and corrected the `% Mismatch` Excel formula logic.
+- [x] **Date Filtering**: Advanced sidebar filtering by Date Range or Specific Dates with automatic report re-calculation.
+- [x] **Flexible Payment Split**: Configurable Fixed/Variable percentage split (e.g., 70/30) via sidebar input.
+- [x] **Decimal Unit Price**: Supports float inputs (e.g., 2.5 BDT) for precise salary calculations.
+- [x] **Maintenance & Bug Fixes**: Resolved Pandas/Streamlit deprecation and downcasting warnings; corrected Excel formula logic for `% Mismatch`.
 
 ## Technical Context for Agents
 - **Main App**: `app.py` handles the entire pipeline (Upload -> Map -> Process -> Export).
@@ -45,7 +39,7 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 - [x] Sidebar inputs for dynamic `Unit Price` adjustments.
 - [x] Excel export functionality with live formulas.
 - [x] Google Sheets Integration for MFS Database.
-- [ ] Multi-region or date-based filtering.
+- [x] Multi-region or date-based filtering.
 - [ ] Email automation for salary slip distribution.
 
 ---

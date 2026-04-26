@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import io
 
+# Opt-in to pandas future behavior to silence downcasting warnings
+pd.set_option('future.no_silent_downcasting', True)
+
 def main():
     st.set_page_config(layout="wide") # Set page layout to wide for better use of space
     st.title("Auditor Performance and Salary Analysis")
