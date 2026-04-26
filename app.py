@@ -118,7 +118,38 @@ def main():
                         header_date_range = f"Visit Date: {start_str} to {end_str}"
                         # Salary month based on end date: e.g., December'2025
                         header_title = f"GP GLM Auditor's Salary- {end_date.strftime('%B')}'{end_date.year}"
-                except Exception:
+
+                        # --- Date Filtering Logic ---
+                        st.sidebar.markdown("---")
+                        st.sidebar.subheader("📅 Date Filtering")
+                        
+                        filter_type = st.sidebar.radio("Filter By:", ["All Dates", "Date Range", "Specific Dates"])
+                        
+                        if filter_type == "Date Range":
+                            date_range = st.sidebar.date_input(
+                                "Select Date Range", 
+                                value=(start_date.date(), end_date.date()), 
+                                min_value=start_date.date(), 
+                                max_value=end_date.date()
+                            )
+                            if len(date_range) == 2:
+                                df_audit = df_audit[(df_audit[date_col].dt.date >= date_range[0]) & (df_audit[date_col].dt.date <= date_range[1])]
+                        
+                        elif filter_type == "Specific Dates":
+                            unique_dates = sorted(df_audit[date_col].dropna().dt.date.unique())
+                            selected_dates = st.sidebar.multiselect("Select Dates", unique_dates)
+                            if selected_dates:
+                                df_audit = df_audit[df_audit[date_col].dt.date.isin(selected_dates)]
+                        
+                        # Re-calculate header string if filtered
+                        if filter_type != "All Dates" and not df_audit.empty:
+                            f_valid_dates = df_audit[date_col].dropna()
+                            if not f_valid_dates.empty:
+                                f_start = f_valid_dates.min()
+                                f_end = f_valid_dates.max()
+                                header_date_range = f"Visit Date: {f_start.strftime('%d-%B-%Y')} to {f_end.strftime('%d-%B-%Y')}"
+
+                except Exception as e:
                     pass
 
             # Group by auditor name for audit performance (added include_groups=False for deprecation warning)

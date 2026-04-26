@@ -25,6 +25,7 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
     - [x] **Whole Numbers**: All salary calculations are rounded to 0 decimal places inside Excel.
 - [x] **Clean UI**: Sidebar mapping guide and auto-formatting for MFS numbers (leading zeros).
 - [x] **Deployment Ready**: `requirements.txt` created and cloud-database integrated.
+- [x] **Maintenance & Bug Fixes**: Resolved Pandas/Streamlit deprecation warnings (`include_groups=False`, `hide_index=True`) and corrected the `% Mismatch` Excel formula logic.
 
 ## Technical Context for Agents
 - **Main App**: `app.py` handles the entire pipeline (Upload -> Map -> Process -> Export).
@@ -49,4 +50,4 @@ An internal tool for the GP Audit Team to calculate auditor performance and gene
 
 ---
 
-*Updated on: 2026-01-14*
+*Updated on: 2026-04-26*
